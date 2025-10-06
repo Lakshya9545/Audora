@@ -1,0 +1,166 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+// schema.prisma
+
+// 1. Define the database connection
+datasource db {
+  provider = "postgresql" // Or "mysql", "sqlite", "sqlserver", "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+// 3. Define application models
+
+// User model for authentication and profile information
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  username      String    @unique
+  password      String
+  avatarUrl     String?   // URL for profile picture from Cloudinary
+  avatarPublicId String?  // Public ID from Cloudinary for avatar management
+  bio           String?
+
+  createdAt DateTime @default(now()) // Timestamp of user creation
+  updatedAt DateTime @updatedAt // Timestamp of last user update
+
+  // --- Relationships ---
+
+  // Posts created by the user (one-to-many)
+  posts Post[]
+
+  // Follows where this user is the one being followed (many-to-many)
+  followers Follow[] @relation("Following")
+
+  // Follows where this user is the one doing the following (many-to-many)
+  following Follow[] @relation("Follower")
+
+  // Notifications received by the user (one-to-many)
+  notifications Notification[] @relation("Recipient")
+
+  // Notifications triggered by the user (e.g., following someone)
+  triggeredNotifications Notification[] @relation("TriggerUser")
+
+  // Likes and Comments
+  likes     Like[]
+  comments  Comment[]
+}
+
+// Post model for audio content
+model Post {
+  id            String   @id @default(cuid())
+  title         String
+  subject       String
+  description   String? // Made description optional in line with zod schema later
+  audioUrl      String   // This will store the secure_url from Cloudinary
+  audioPublicId String   // This will store the public_id from Cloudinary
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  authorId      String
+  author        User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  notifications Notification[]
+  likes         Like[]
+  comments      Comment[]
+
+  @@index([authorId])
+}
+
+// Follow model representing the relationship: follower follows following
+model Follow {
+  id          String @id @default(cuid()) // Unique identifier for the follow relationship
+  followerId  String // ID of the user doing the following
+  followingId String // ID of the user being followed
+
+  createdAt DateTime @default(now()) // Timestamp when the follow occurred
+
+  // --- Relationships ---
+  follower  User @relation("Follower", fields: [followerId], references: [id], onDelete: Cascade)
+  following User @relation("Following", fields: [followingId], references: [id], onDelete: Cascade)
+
+  // --- Constraints & Indexes ---
+  // Prevent a user from following the same person multiple times
+  @@unique([followerId, followingId])
+  // Add indexes for performance
+  @@index([followerId])
+  @@index([followingId])
+}
+
+// Like model for posts
+model Like {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  postId String
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId])
+  @@index([userId])
+  @@index([postId])
+}
+
+// Comment model for posts
+model Comment {
+  id        String   @id @default(cuid())
+  text      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  postId String
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([postId])
+}
+
+// Notification model for in-app alerts
+model Notification {
+  id        String   @id @default(cuid()) // Unique identifier for the notification
+  type      NotificationType // Type of notification (e.g., NEW_FOLLOWER, NEW_POST)
+  read      Boolean  @default(false) // Read status of the notification
+  createdAt DateTime @default(now()) // Timestamp of notification creation
+  updatedAt DateTime @updatedAt // Timestamp of last notification update
+
+  // --- Relationships ---
+
+  // The user receiving the notification (many-to-one)
+  recipientId String // Foreign key for the recipient user
+  recipient   User   @relation("Recipient", fields: [recipientId], references: [id], onDelete: Cascade)
+
+  // The user who triggered the notification (optional, e.g., the new follower)
+  triggerUserId String? // Optional foreign key for the triggering user
+  triggerUser   User?   @relation("TriggerUser", fields: [triggerUserId], references: [id], onDelete: SetNull) // Can be null if system generated or trigger user deleted
+
+  // The post related to the notification (optional, e.g., for NEW_POST type)
+  postId String? // Optional foreign key for the related post
+  post   Post?   @relation(fields: [postId], references: [id], onDelete: SetNull) // Can be null if post deleted
+
+  // Add indexes for performance
+  @@index([recipientId])
+  @@index([triggerUserId])
+  @@index([postId])
+}
+
+// Enum defining the types of notifications supported in MVP
+enum NotificationType {
+  NEW_FOLLOWER
+  NEW_POST
+  LIKE
+  COMMENT
+}

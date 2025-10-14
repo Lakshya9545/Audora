@@ -11,13 +11,14 @@ const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL 
   const router = useRouter(); // Router instance for navigation
 
   const handleSubmit = async (e:any) => {
     e.preventDefault();
   
     try {
-      const response = await fetch('http://localhost:5000/api/auth/login', {
+      const response = await fetch(`${apiUrl}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

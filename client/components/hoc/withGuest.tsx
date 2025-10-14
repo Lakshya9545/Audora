@@ -9,7 +9,7 @@ const withGuest = (WrappedComponent: React.ComponentType) => {
   const GuestOnly: React.FC = (props) => {
     const [loading, setLoading] = useState(true);
     const router = useRouter();
-    const apiUrl = process.env.NEXT_API_PUBLIC_URL
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL 
     useEffect(() => {
       const checkAuth = async () => {
         try {

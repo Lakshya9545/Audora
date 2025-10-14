@@ -15,6 +15,7 @@ const SignupPage: React.FC = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL 
 
   const router = useRouter();
 
@@ -30,7 +31,7 @@ const SignupPage: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const res = await fetch('http://localhost:5000/api/auth/signup', {
+      const res = await fetch(`${apiUrl}/api/auth/signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, email, password }),

@@ -8,11 +8,12 @@ const withAuth = <P extends object>(WrappedComponent: React.ComponentType<P>) =>
     const [loading, setLoading] = useState(true);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const router = useRouter();
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL 
 
     useEffect(() => {
       const checkAuth = async () => {
         try {
-          const res = await fetch('http://localhost:5000/api/auth/check', {
+          const res = await fetch(`${apiUrl}/api/auth/check`, {
             method: 'GET',
             credentials: 'include', // important to send cookies
           });

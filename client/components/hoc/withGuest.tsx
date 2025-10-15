@@ -9,11 +9,11 @@ const withGuest = (WrappedComponent: React.ComponentType) => {
   const GuestOnly: React.FC = (props) => {
     const [loading, setLoading] = useState(true);
     const router = useRouter();
-
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL 
     useEffect(() => {
       const checkAuth = async () => {
         try {
-          const res = await fetch('http://localhost:5000/api/auth/check', {
+          const res = await fetch(`${apiUrl}/api/auth/check`, {
             credentials: 'include', // Important for cookies
           });
 

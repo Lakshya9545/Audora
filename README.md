@@ -182,3 +182,98 @@ There aren't test scripts in package.json by default. For quick database inspect
 If you need help reproducing a bug or running the app locally, include the server logs and a minimal reproduction (steps to login, create users, and which endpoints you called).
 
 ---
+
+## DevOps, Deployment, and Monitoring 🚀
+This project is configured with a robust DevOps toolchain to automate deployment and ensure operational stability.
+
+### 1. Infrastructure as Code (Terraform) 🏗️
+The project's cloud infrastructure is managed declaratively using Terraform.
+
+Configuration: All Terraform files are located in the `infra/` directory.
+
+Resources: Manages the creation and configuration of AWS EC2 instances, security groups, and other necessary cloud resources.
+
+Usage (bash):
+
+```bash
+cd infra
+terraform init
+terraform plan
+terraform apply
+```
+
+PowerShell (Windows):
+
+```powershell
+Set-Location infra
+terraform init
+terraform plan
+terraform apply
+```
+
+### 2. Continuous Inspection (SonarQube) 🕵️
+Code quality and security are automatically inspected using SonarQube.
+
+Setup: SonarQube runs as a Docker container on a dedicated EC2 instance.
+
+Analysis: The SonarScanner CLI is used to analyze the codebase for bugs, vulnerabilities, and code smells.
+
+To run a scan (bash):
+
+```bash
+# From the root of the project
+sonar-scanner \
+  -Dsonar.projectKey=audora \
+  -Dsonar.sources=. \
+  -Dsonar.host.url=http://<your-sonarqube-ip>:9000 \
+  -Dsonar.token=<your-sonarqube-token>
+```
+
+PowerShell (Windows):
+
+```powershell
+# From the root of the project
+sonar-scanner `
+  -Dsonar.projectKey=audora `
+  -Dsonar.sources=. `
+  -Dsonar.host.url=http://<your-sonarqube-ip>:9000 `
+  -Dsonar.token=<your-sonarqube-token>
+```
+
+### 3. Monitoring & Observability (Grafana + Prometheus) 📊
+The production server's health and performance are monitored in real-time.
+
+Architecture:
+
+Prometheus is installed on the application server, scraping metrics from Node Exporter.
+
+Grafana runs on a separate instance, using Prometheus as a data source to build and display dashboards.
+
+Dashboards:
+
+- Prometheus UI: http://<your-app-server-ip>:9090
+- Grafana Dashboard: http://<your-grafana-server-ip>:3000
+
+### 4. Process Management (PM2)
+The backend and frontend Node.js processes are managed by PM2 to ensure they run continuously and restart automatically on failure or server reboot.
+
+Usage (bash / PowerShell):
+
+```bash
+# Start the backend
+pm2 start npm --name "audora-backend" -- start
+
+# Save the process list to automatically restart on reboot
+pm2 save
+```
+
+PowerShell (equivalent):
+
+```powershell
+# Start the backend
+pm2 start npm --name "audora-backend" -- start
+
+# Save the process list to automatically restart on reboot
+pm2 save
+```
+

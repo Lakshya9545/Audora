@@ -11,18 +11,26 @@ This README covers local setup, running the apps in development, database migrat
 
 ## Table of contents
 
-- Project overview
-- Architecture and key folders
-- Requirements
-- Environment variables
-- Local development
-  - Start server
-  - Start client
-- Database (Prisma)
-- Running migrations
-- Production notes
-- Troubleshooting
-- Contributing
+## Table of contents
+
+- [Project overview](#project-overview)
+- [Architecture and key folders](#architecture--important-folders)
+- [Requirements](#requirements)
+- [Environment variables](#environment-variables)
+- [Local development](#local-development)
+  - [Start server](#3-run-the-server)
+  - [Start client](#4-run-the-client)
+- [Database (Prisma)](#database-and-prisma)
+- [Running migrations](#running-migrations)
+- [Production notes](#production--deployment-notes)
+- [Troubleshooting](#troubleshooting)
+- [DevOps, Deployment, and Monitoring 🚀](#devops-deployment-and-monitoring-)
+  - [Infrastructure as Code (Terraform)](#1-infrastructure-as-code-terraform-️)
+  - [Continuous Deployment (GitHub Actions)](#2-continuous-deployment-github-actions-)
+  - [Code Quality & Security (SonarCloud)](#3-code-quality--security-sonarcloud-)
+  - [Process Management (PM2)](#4-process-management-pm2)
+- [Contributing](#contributing)
+- [Contact / References](#contact--references)
 
 
 ## Project overview
@@ -184,96 +192,159 @@ If you need help reproducing a bug or running the app locally, include the serve
 ---
 
 ## DevOps, Deployment, and Monitoring 🚀
-This project is configured with a robust DevOps toolchain to automate deployment and ensure operational stability.
+The Audora platform is deployed with a robust, multi-server DevOps toolchain designed for automation, quality assurance, and real-time observability.
+
+### Overall Architecture
+The environment consists of two primary EC2 instances on AWS:
+
+- **Application & Monitoring Server (t2.medium | Ubuntu):** Hosts the Audora backend, SonarQube (via Docker), Prometheus, and Node Exporter.
+- **Grafana Server (t3.micro | Ubuntu):** Hosts the Grafana visualization platform.
 
 ### 1. Infrastructure as Code (Terraform) 🏗️
-The project's cloud infrastructure is managed declaratively using Terraform.
+The cloud infrastructure is provisioned and managed declaratively using Terraform, ensuring a repeatable and consistent setup.
 
-Configuration: All Terraform files are located in the `infra/` directory.
+**Location:** All configuration files (`.tf`) are located in the `infra/` directory.
 
-Resources: Manages the creation and configuration of AWS EC2 instances, security groups, and other necessary cloud resources.
+**Managed Resources:** Terraform handles the creation of EC2 instances, security groups (firewall rules), and associated networking.
 
-Usage (bash):
+**Standard Workflow:** To deploy or update the infrastructure, run the following commands from the `infra/` directory:
+
+Bash
 
 ```bash
-cd infra
+# Initialize the Terraform workspace
 terraform init
+
+# Preview the changes
 terraform plan
+
+# Apply the changes to create/update infrastructure
 terraform apply
 ```
 
-PowerShell (Windows):
+PowerShell
 
 ```powershell
 Set-Location infra
+
+# Initialize the Terraform workspace
 terraform init
+
+# Preview the changes
 terraform plan
+
+# Apply the changes to create/update infrastructure
 terraform apply
 ```
 
 ### 2. Continuous Inspection (SonarQube) 🕵️
-Code quality and security are automatically inspected using SonarQube.
+Code quality is enforced through static analysis with SonarQube, which runs as a Docker container on the main application server for efficiency.
 
-Setup: SonarQube runs as a Docker container on a dedicated EC2 instance.
+**Access the Dashboard:** http://<sonarqube-server-ip>:9000
 
-Analysis: The SonarScanner CLI is used to analyze the codebase for bugs, vulnerabilities, and code smells.
+**Login:** user: `admin`
 
-To run a scan (bash):
+**Analysis Execution:** To run a scan, clone the repository onto the SonarQube server and execute the SonarScanner CLI from the project's root directory.
+
+Bash
 
 ```bash
-# From the root of the project
+# Example command to run a new scan
 sonar-scanner \
-  -Dsonar.projectKey=audora \
+  -Dsonar.projectKey=Audora \
   -Dsonar.sources=. \
-  -Dsonar.host.url=http://<your-sonarqube-ip>:9000 \
-  -Dsonar.token=<your-sonarqube-token>
+  -Dsonar.host.url=http://<sonarqube-server-ip>:9000 \
+  -Dsonar.token=<your-generated-project-token>
 ```
 
-PowerShell (Windows):
+PowerShell
 
 ```powershell
-# From the root of the project
+# Example command to run a new scan
 sonar-scanner `
-  -Dsonar.projectKey=audora `
+  -Dsonar.projectKey=Audora `
   -Dsonar.sources=. `
-  -Dsonar.host.url=http://<your-sonarqube-ip>:9000 `
-  -Dsonar.token=<your-sonarqube-token>
+  -Dsonar.host.url=http://<sonarqube-server-ip>:9000 `
+  -Dsonar.token=<your-generated-project-token>
 ```
 
 ### 3. Monitoring & Observability (Grafana + Prometheus) 📊
-The production server's health and performance are monitored in real-time.
+Real-time performance and health of the SonarQube/application server are monitored using Prometheus and visualized with Grafana.
 
-Architecture:
+**Architecture:**
 
-Prometheus is installed on the application server, scraping metrics from Node Exporter.
+- Node Exporter runs as a `systemd` service on the application server to expose hardware and OS metrics on port `9100`.
+- Prometheus runs as a `systemd` service on the same server, scraping metrics from Node Exporter and storing them.
+- Grafana runs on a dedicated server and queries Prometheus as its data source to build visualizations.
 
-Grafana runs on a separate instance, using Prometheus as a data source to build and display dashboards.
+**Service Management:** The monitoring services run automatically. You can manage them with:
 
-Dashboards:
-
-- Prometheus UI: http://<your-app-server-ip>:9090
-- Grafana Dashboard: http://<your-grafana-server-ip>:3000
-
-### 4. Process Management (PM2)
-The backend and frontend Node.js processes are managed by PM2 to ensure they run continuously and restart automatically on failure or server reboot.
-
-Usage (bash / PowerShell):
+Bash
 
 ```bash
-# Start the backend
+# Check the status of the services on the app server
+sudo systemctl status prometheus
+sudo systemctl status node_exporter
+```
+
+PowerShell (when using remote SSH session):
+
+```powershell
+# Run these on the app server via SSH
+ssh ubuntu@<app-server-ip>
+sudo systemctl status prometheus
+sudo systemctl status node_exporter
+```
+
+**Access the Dashboards:**
+
+- Prometheus UI (for debugging): http://<sonarqube-server-ip>:9090
+- Grafana Live Dashboard: http://<grafana-server-ip>:3000
+
+### 4. Process Management (PM2)
+The Audora frontend and backend Node.js applications are managed by PM2. This ensures they run continuously in the background, are automatically restarted on failure, and are restored after a server reboot.
+
+**Starting Applications:**
+
+Bash
+
+```bash
+# Navigate to your backend directory and start
 pm2 start npm --name "audora-backend" -- start
 
-# Save the process list to automatically restart on reboot
-pm2 save
+# Navigate to your frontend directory and start
+pm2 start npm --name "audora-frontend" -- start
 ```
 
 PowerShell (equivalent):
 
 ```powershell
-# Start the backend
+# Navigate to your backend directory and start
 pm2 start npm --name "audora-backend" -- start
 
-# Save the process list to automatically restart on reboot
+# Navigate to your frontend directory and start
+pm2 start npm --name "audora-frontend" -- start
+```
+
+**Ensuring Persistence:** To make sure all apps restart when the server boots up, run these two commands once:
+
+Bash
+
+```bash
+# Generate the startup script
+pm2 startup
+
+# Save the current list of running processes
 pm2 save
 ```
+
+**Monitoring Processes:**
+
+Bash
+
+```bash
+# List all running applications managed by PM2
+pm2 list
+```
+
 
